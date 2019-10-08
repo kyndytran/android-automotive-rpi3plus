@@ -1,0 +1,154 @@
+From 92574560281fff02abbd0560bf4ca9bd39ab389e Mon Sep 17 00:00:00 2001
+From: Kha Tran <khab1304690@gmail.com>
+Date: Fri, 13 Sep 2019 22:36:48 +0700
+Subject: [PATCH 1/6] rpi3: fix NavigationBar always on right side
+
+Make navigationbar is visible at bottom screen
+
+Signed-off-by: Kha Tran <khab1304690@gmail.com>
+---
+ .../SystemUI/res/layout/navigation_layout.xml      | 55 ---------------------
+ .../res/layout/navigation_layout_rot90.xml         | 56 ----------------------
+ tablet_core_hardware.xml                           |  1 -
+ 3 files changed, 112 deletions(-)
+ delete mode 100644 overlay/frameworks/base/packages/SystemUI/res/layout/navigation_layout.xml
+ delete mode 100644 overlay/frameworks/base/packages/SystemUI/res/layout/navigation_layout_rot90.xml
+
+diff --git a/overlay/frameworks/base/packages/SystemUI/res/layout/navigation_layout.xml b/overlay/frameworks/base/packages/SystemUI/res/layout/navigation_layout.xml
+deleted file mode 100644
+index 6d5b778..0000000
+--- a/overlay/frameworks/base/packages/SystemUI/res/layout/navigation_layout.xml
++++ /dev/null
+@@ -1,55 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!-- Copyright (C) 2016 The Android Open Source Project
+-
+-     Licensed under the Apache License, Version 2.0 (the "License");
+-     you may not use this file except in compliance with the License.
+-     You may obtain a copy of the License at
+-
+-          http://www.apache.org/licenses/LICENSE-2.0
+-
+-     Unless required by applicable law or agreed to in writing, software
+-     distributed under the License is distributed on an "AS IS" BASIS,
+-     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-     See the License for the specific language governing permissions and
+-     limitations under the License.
+--->
+-
+-<FrameLayout
+-    xmlns:android="http://schemas.android.com/apk/res/android"
+-    xmlns:systemui="http://schemas.android.com/apk/res-auto"
+-    android:layout_width="match_parent"
+-    android:layout_height="match_parent">
+-
+-    <com.android.systemui.statusbar.phone.NearestTouchFrame
+-        android:id="@+id/nav_buttons"
+-        android:layout_width="match_parent"
+-        android:layout_height="match_parent"
+-        android:paddingTop="@dimen/rounded_corner_content_padding"
+-        android:paddingBottom="@dimen/rounded_corner_content_padding"
+-        android:clipChildren="false"
+-        android:clipToPadding="false">
+-
+-        <com.android.systemui.statusbar.phone.ReverseLinearLayout
+-            android:id="@+id/ends_group"
+-            android:layout_width="match_parent"
+-            android:layout_height="match_parent"
+-            android:orientation="vertical"
+-            android:paddingTop="@dimen/nav_content_padding"
+-            android:paddingBottom="@dimen/nav_content_padding"
+-            android:clipChildren="false"
+-            android:clipToPadding="false" />
+-
+-        <com.android.systemui.statusbar.phone.ReverseLinearLayout
+-            android:id="@+id/center_group"
+-            android:layout_width="match_parent"
+-            android:layout_height="match_parent"
+-            android:gravity="center"
+-            android:orientation="vertical"
+-            android:paddingTop="@dimen/nav_content_padding"
+-            android:paddingBottom="@dimen/nav_content_padding"
+-            android:clipChildren="false"
+-            android:clipToPadding="false" />
+-
+-    </com.android.systemui.statusbar.phone.NearestTouchFrame>
+-
+-</FrameLayout>
+diff --git a/overlay/frameworks/base/packages/SystemUI/res/layout/navigation_layout_rot90.xml b/overlay/frameworks/base/packages/SystemUI/res/layout/navigation_layout_rot90.xml
+deleted file mode 100644
+index baaf699..0000000
+--- a/overlay/frameworks/base/packages/SystemUI/res/layout/navigation_layout_rot90.xml
++++ /dev/null
+@@ -1,56 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!-- Copyright (C) 2016 The Android Open Source Project
+-
+-     Licensed under the Apache License, Version 2.0 (the "License");
+-     you may not use this file except in compliance with the License.
+-     You may obtain a copy of the License at
+-
+-          http://www.apache.org/licenses/LICENSE-2.0
+-
+-     Unless required by applicable law or agreed to in writing, software
+-     distributed under the License is distributed on an "AS IS" BASIS,
+-     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-     See the License for the specific language governing permissions and
+-     limitations under the License.
+--->
+-
+-<FrameLayout
+-    xmlns:android="http://schemas.android.com/apk/res/android"
+-    xmlns:systemui="http://schemas.android.com/apk/res-auto"
+-    android:layout_width="match_parent"
+-    android:layout_height="match_parent">
+-
+-    <com.android.systemui.statusbar.phone.NearestTouchFrame
+-        android:id="@+id/nav_buttons"
+-        android:layout_width="match_parent"
+-        android:layout_height="match_parent"
+-        android:paddingStart="@dimen/rounded_corner_content_padding"
+-        android:paddingEnd="@dimen/rounded_corner_content_padding"
+-        android:clipChildren="false"
+-        android:clipToPadding="false">
+-
+-        <LinearLayout
+-            android:id="@+id/ends_group"
+-            android:layout_width="match_parent"
+-            android:layout_height="match_parent"
+-            android:orientation="horizontal"
+-            android:paddingStart="@dimen/nav_content_padding"
+-            android:paddingEnd="@dimen/nav_content_padding"
+-            android:clipToPadding="false"
+-            android:clipChildren="false" />
+-
+-        <LinearLayout
+-            android:id="@+id/center_group"
+-            android:layout_width="wrap_content"
+-            android:layout_height="match_parent"
+-            android:layout_gravity="center"
+-            android:gravity="center"
+-            android:orientation="horizontal"
+-            android:paddingStart="@dimen/nav_content_padding"
+-            android:paddingEnd="@dimen/nav_content_padding"
+-            android:clipToPadding="false"
+-            android:clipChildren="false" />
+-
+-    </com.android.systemui.statusbar.phone.NearestTouchFrame>
+-
+-</FrameLayout>
+diff --git a/tablet_core_hardware.xml b/tablet_core_hardware.xml
+index 011cc89..34799ae 100644
+--- a/tablet_core_hardware.xml
++++ b/tablet_core_hardware.xml
+@@ -20,7 +20,6 @@
+     <feature name="android.hardware.bluetooth_le" />
+     <feature name="android.hardware.touchscreen" />
+     <feature name="android.hardware.microphone" />
+-    <feature name="android.hardware.screen.portrait" />
+     <feature name="android.hardware.screen.landscape" />
+ 
+     <!-- basic system services -->
+-- 
+2.7.4
+

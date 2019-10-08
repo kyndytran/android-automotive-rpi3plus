@@ -1,0 +1,550 @@
+From 2aa54167f9576112575c8b8bcb470b0c99142c1d Mon Sep 17 00:00:00 2001
+From: Kha Tran <khab1304690@gmail.com>
+Date: Tue, 8 Oct 2019 13:18:05 +0700
+Subject: [PATCH 6/6] rpi3-plus: add support Android automotive
+
+Signed-off-by: Kha Tran <khab1304690@gmail.com>
+---
+ BoardConfig.mk                                     |   2 +-
+ boot/create_partition_table.sh                     |   2 +-
+ car.mk                                             | 125 +++++++++++++++++++++
+ car_base.mk                                        |  99 ++++++++++++++++
+ media_codecs.xml                                   |  40 +++++++
+ mini_rpi3_common.mk                                |   7 +-
+ .../frameworks/base/core/res/res/values/config.xml |  56 ++++++++-
+ .../SettingsProvider/res/values/defaults.xml       |   3 +
+ .../base/packages/SystemUI/res/values/config.xml   |  29 +++++
+ rpi3.mk                                            |  41 ++++++-
+ 10 files changed, 391 insertions(+), 13 deletions(-)
+ create mode 100644 car.mk
+ create mode 100644 car_base.mk
+ create mode 100644 overlay/frameworks/base/packages/SystemUI/res/values/config.xml
+
+diff --git a/BoardConfig.mk b/BoardConfig.mk
+index cabfb90..230b1e0 100644
+--- a/BoardConfig.mk
++++ b/BoardConfig.mk
+@@ -36,7 +36,7 @@ NUM_FRAMEBUFFER_SURFACE_BUFFERS := 3
+ # Build and enable the OpenGL ES View renderer.
+ USE_OPENGL_RENDERER := true
+ 
+-BOARD_SYSTEMIMAGE_PARTITION_SIZE := $(shell echo $$((650*1024*1024))) # 650MB
++BOARD_SYSTEMIMAGE_PARTITION_SIZE := $(shell echo $$((1024*1024*1024))) # 650MB
+ BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := ext4
+ 
+ BOARD_USERDATAIMAGE_PARTITION_SIZE := $(shell echo $$((128*1024*1024))) # 256MB
+diff --git a/boot/create_partition_table.sh b/boot/create_partition_table.sh
+index a8064b0..46e6e2b 100755
+--- a/boot/create_partition_table.sh
++++ b/boot/create_partition_table.sh
+@@ -62,7 +62,7 @@ target=${1}
+ SIZE_RPIBOOT=64M
+ SIZE_UBOOT=1024K
+ SIZE_BOOT=32M
+-SIZE_SYSTEM=650M
++SIZE_SYSTEM=1024M
+ SIZE_VBMETA=64K
+ SIZE_MISC=1024K
+ SIZE_VENDOR=256M
+diff --git a/car.mk b/car.mk
+new file mode 100644
+index 0000000..e5f9933
+--- /dev/null
++++ b/car.mk
+@@ -0,0 +1,125 @@
++#
++# Copyright (C) 2016 The Android Open-Source Project
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#      http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++#
++
++# Common make file for all car builds
++
++$(call inherit-product, device/brobwind/rpi3/car_base.mk)
++BOARD_PLAT_PUBLIC_SEPOLICY_DIR += packages/services/Car/car_product/sepolicy/public
++BOARD_PLAT_PRIVATE_SEPOLICY_DIR += packages/services/Car/car_product/sepolicy/private
++
++PRODUCT_PACKAGES += \
++    Bluetooth \
++    OneTimeInitializer \
++    Provision \
++    SystemUI \
++    SystemUpdater
++
++PRODUCT_PACKAGES += \
++    clatd \
++    clatd.conf \
++    pppd \
++    screenrecord
++
++# This is for testing
++ifneq (,$(filter userdebug eng, $(TARGET_BUILD_VARIANT)))
++PRODUCT_PACKAGES += \
++    DefaultStorageMonitoringCompanionApp \
++    EmbeddedKitchenSinkApp \
++    VmsPublisherClientSample \
++    VmsSubscriberClientSample \
++    android.car.cluster.loggingrenderer \
++    DirectRenderingClusterSample \
++    com.android.car.powertestservice \
++
++# SEPolicy for test apps / services
++BOARD_SEPOLICY_DIRS += packages/services/Car/car_product/sepolicy/test
++endif
++
++PRODUCT_COPY_FILES := \
++    frameworks/av/media/libeffects/data/audio_effects.conf:system/etc/audio_effects.conf \
++    packages/services/Car/car_product/preloaded-classes-car:system/etc/preloaded-classes \
++
++PRODUCT_PROPERTY_OVERRIDES += \
++    ro.carrier=unknown \
++    persist.bluetooth.enablenewavrcp=false
++
++# Overlay for Google network and fused location providers
++$(call inherit-product, device/sample/products/location_overlay.mk)
++$(call inherit-product-if-exists, frameworks/base/data/fonts/fonts.mk)
++$(call inherit-product-if-exists, external/google-fonts/dancing-script/fonts.mk)
++$(call inherit-product-if-exists, external/google-fonts/carrois-gothic-sc/fonts.mk)
++$(call inherit-product-if-exists, external/google-fonts/coming-soon/fonts.mk)
++$(call inherit-product-if-exists, external/google-fonts/cutive-mono/fonts.mk)
++$(call inherit-product-if-exists, external/noto-fonts/fonts.mk)
++$(call inherit-product-if-exists, external/roboto-fonts/fonts.mk)
++$(call inherit-product-if-exists, external/hyphenation-patterns/patterns.mk)
++$(call inherit-product-if-exists, frameworks/base/data/keyboards/keyboards.mk)
++$(call inherit-product-if-exists, frameworks/webview/chromium/chromium.mk)
++
++PRODUCT_PROPERTY_OVERRIDES := \
++    ro.config.ringtone=Girtab.ogg \
++    ro.config.notification_sound=Tethys.ogg \
++    ro.config.alarm_alert=Oxygen.ogg \
++    $(PRODUCT_PROPERTY_OVERRIDES) \
++
++PRODUCT_PROPERTY_OVERRIDES += \
++    keyguard.no_require_sim=true
++
++# Automotive specific packages
++PRODUCT_PACKAGES += \
++    CarService \
++    CarTrustAgentService \
++    CarDialerApp \
++    CarRadioApp \
++    OverviewApp \
++    CarLauncher \
++    CarLensPickerApp \
++    LocalMediaPlayer \
++    CarMediaApp \
++    CarMessengerApp \
++    CarHvacApp \
++    CarMapsPlaceholder \
++    CarLatinIME \
++    CarSettings \
++    CarUsbHandler \
++    android.car \
++    car-frameworks-service \
++    com.android.car.procfsinspector \
++    libcar-framework-service-jni \
++
++# System Server components
++PRODUCT_SYSTEM_SERVER_JARS += car-frameworks-service
++
++# Boot animation
++PRODUCT_COPY_FILES += \
++    packages/services/Car/car_product/bootanimations/bootanimation-832.zip:system/media/bootanimation.zip
++
++PRODUCT_PROPERTY_OVERRIDES += \
++    fmas.spkr_6ch=35,20,110 \
++    fmas.spkr_2ch=35,25 \
++    fmas.spkr_angles=10 \
++    fmas.spkr_sgain=0 \
++    media.aac_51_output_enabled=true
++
++PRODUCT_LOCALES := en_US af_ZA am_ET ar_EG bg_BG bn_BD ca_ES cs_CZ da_DK de_DE el_GR en_AU en_GB en_IN es_ES es_US et_EE eu_ES fa_IR fi_FI fr_CA fr_FR gl_ES hi_IN hr_HR hu_HU hy_AM in_ID is_IS it_IT iw_IL ja_JP ka_GE km_KH ko_KR ky_KG lo_LA lt_LT lv_LV km_MH kn_IN mn_MN ml_IN mk_MK mr_IN ms_MY my_MM ne_NP nb_NO nl_NL pl_PL pt_BR pt_PT ro_RO ru_RU si_LK sk_SK sl_SI sr_RS sv_SE sw_TZ ta_IN te_IN th_TH tl_PH tr_TR uk_UA vi_VN zh_CN zh_HK zh_TW zu_ZA en_XA ar_XB
++
++# should add to BOOT_JARS only once
++ifeq (,$(INCLUDED_ANDROID_CAR_TO_PRODUCT_BOOT_JARS))
++PRODUCT_BOOT_JARS += \
++    android.car
++
++INCLUDED_ANDROID_CAR_TO_PRODUCT_BOOT_JARS := yes
++endif
+diff --git a/car_base.mk b/car_base.mk
+new file mode 100644
+index 0000000..5027b07
+--- /dev/null
++++ b/car_base.mk
+@@ -0,0 +1,99 @@
++#
++# Copyright (C) 2016 The Android Open-Source Project
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#      http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++#
++
++# Base platform for car builds
++# car packages should be added to car.mk instead of here
++
++PRODUCT_PACKAGE_OVERLAYS += packages/services/Car/car_product/overlay
++
++PRODUCT_PACKAGES += \
++    ContactsProvider \
++    DefaultContainerService \
++    BasicDreams \
++    CaptivePortalLogin \
++    CertInstaller \
++    DocumentsUI \
++    DownloadProviderUi \
++    FusedLocation \
++    InputDevices \
++    KeyChain \
++    Keyguard \
++    LatinIME \
++    ManagedProvisioning \
++    PacProcessor \
++    libpac \
++    PrintSpooler \
++    ProxyHandler \
++    Settings \
++    SharedStorageBackup \
++    VpnDialogs \
++    MmsService \
++    ExternalStorageProvider \
++    atrace \
++    libandroidfw \
++    libaudiopreprocessing \
++    libaudioutils \
++    libfilterpack_imageproc \
++    libgabi++ \
++    libmdnssd \
++    libnfc_ndef \
++    libpowermanager \
++    libspeexresampler \
++    libstagefright_soft_aacdec \
++    libstagefright_soft_aacenc \
++    libstagefright_soft_amrdec \
++    libstagefright_soft_amrnbenc \
++    libstagefright_soft_amrwbenc \
++    libstagefright_soft_avcdec \
++    libstagefright_soft_avcenc \
++    libstagefright_soft_flacdec \
++    libstagefright_soft_flacenc \
++    libstagefright_soft_g711dec \
++    libstagefright_soft_gsmdec \
++    libstagefright_soft_hevcdec \
++    libstagefright_soft_mp3dec \
++    libstagefright_soft_mpeg2dec \
++    libstagefright_soft_mpeg4dec \
++    libstagefright_soft_mpeg4enc \
++    libstagefright_soft_opusdec \
++    libstagefright_soft_rawdec \
++    libstagefright_soft_vorbisdec \
++    libstagefright_soft_vpxdec \
++    libstagefright_soft_vpxenc \
++    libvariablespeed \
++    libwebrtc_audio_preprocessing \
++    mdnsd \
++    requestsync \
++    wifi-service \
++    A2dpSinkService \
++
++# EVS resources
++PRODUCT_PACKAGES += android.automotive.evs.manager@1.0
++# The following packages, or their vendor specific equivalents should be include in the device.mk
++#PRODUCT_PACKAGES += evs_app
++#PRODUCT_PACKAGES += evs_app_default_resources
++#PRODUCT_PACKAGES += android.hardware.automotive.evs@1.0-service
++
++# Device running Android is a car
++PRODUCT_COPY_FILES += \
++    frameworks/native/data/etc/android.hardware.type.automotive.xml:system/etc/permissions/android.hardware.type.automotive.xml
++
++# Default permission grant exceptions
++PRODUCT_COPY_FILES += \
++    packages/services/Car/car_product/build/default-car-permissions.xml:system/etc/default-permissions/default-car-permissions.xml
++
++$(call inherit-product, $(SRC_TARGET_DIR)/product/core_minimal.mk)
++
+diff --git a/media_codecs.xml b/media_codecs.xml
+index edead34..be3906b 100644
+--- a/media_codecs.xml
++++ b/media_codecs.xml
+@@ -81,6 +81,46 @@ Only the three quirks included above are recognized at this point:
+     <Settings>
+         <Setting name="max-video-encoder-input-buffers" value="12" />
+     </Settings>
++    <Decoder>
++	<MediaCodec name="OMX.google.h264.decoder" type="video/avc">
++            <!-- profiles and levels:  ProfileHigh : Level52 -->
++            <Limit name="size" min="2x2" max="4080x4080" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="block-count" range="1-32768" /> <!-- max 4096x2048 equivalent -->
++            <Limit name="blocks-per-second" range="1-1966080" />
++            <Limit name="bitrate" range="1-48000000" />
++            <Feature name="adaptive-playback" />
++        </MediaCodec>
++	<MediaCodec name="OMX.google.hevc.decoder" type="video/hevc">
++            <!-- profiles and levels:  ProfileMain : MainTierLevel51 -->
++            <Limit name="size" min="2x2" max="4096x4096" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="8x8" />
++            <Limit name="block-count" range="1-196608" /> <!-- max 4096x3072 -->
++            <Limit name="blocks-per-second" range="1-2000000" />
++            <Limit name="bitrate" range="1-10000000" />
++            <Feature name="adaptive-playback" />
++        </MediaCodec>
++        <MediaCodec name="OMX.google.vp8.decoder" type="video/x-vnd.on2.vp8">
++            <Limit name="size" min="2x2" max="2048x2048" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="block-count" range="1-16384" />
++            <Limit name="blocks-per-second" range="1-1000000" />
++            <Limit name="bitrate" range="1-40000000" />
++            <Feature name="adaptive-playback" />
++        </MediaCodec>
++        <MediaCodec name="OMX.google.vp9.decoder" type="video/x-vnd.on2.vp9">
++            <Limit name="size" min="2x2" max="2048x2048" />
++            <Limit name="alignment" value="2x2" />
++            <Limit name="block-size" value="16x16" />
++            <Limit name="block-count" range="1-16384" />
++            <Limit name="blocks-per-second" range="1-500000" />
++            <Limit name="bitrate" range="1-40000000" />
++            <Feature name="adaptive-playback" />
++        </MediaCodec>
++    </Decoder>
+ 
+     <Include href="media_codecs_google_audio.xml" />
+     <Include href="media_codecs_google_telephony.xml" />
+diff --git a/mini_rpi3_common.mk b/mini_rpi3_common.mk
+index 2c943ce..2d3bc87 100644
+--- a/mini_rpi3_common.mk
++++ b/mini_rpi3_common.mk
+@@ -47,7 +47,6 @@ PRODUCT_PACKAGES += \
+ 
+ PRODUCT_PACKAGES += \
+     DeskClock \
+-    Launcher3Go \
+ 
+ PRODUCT_PACKAGES += \
+     android.hardware.audio@2.0-impl \
+@@ -172,9 +171,9 @@ PRODUCT_COPY_FILES += \
+ PRODUCT_COPY_FILES += \
+     device/brobwind/rpi3/media_codecs.xml:system/etc/media_codecs.xml \
+     device/brobwind/rpi3/media_profiles.xml:system/etc/media_profiles.xml \
+-    frameworks/av/media/libstagefright/data/media_codecs_google_audio.xml:system/etc/media_codecs_google_audio.xml \
+-    frameworks/av/media/libstagefright/data/media_codecs_google_telephony.xml:system/etc/media_codecs_google_telephony.xml \
+-    frameworks/av/media/libstagefright/data/media_codecs_google_video.xml:system/etc/media_codecs_google_video.xml \
++    frameworks/av/media/libstagefright/data/media_codecs_google_audio.xml:$(TARGET_COPY_OUT_VENDOR)/system/etc/media_codecs_google_audio.xml \
++    frameworks/av/media/libstagefright/data/media_codecs_google_telephony.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_telephony.xml \
++    frameworks/av/media/libstagefright/data/media_codecs_google_video.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_video.xml \
+ 
+ PRODUCT_COPY_FILES += \
+     device/brobwind/rpi3/init.rpi3-net.sh:$(TARGET_COPY_OUT_VENDOR)/bin/init.rpi3-net.sh
+diff --git a/overlay/frameworks/base/core/res/res/values/config.xml b/overlay/frameworks/base/core/res/res/values/config.xml
+index a35339c..3f395ad 100644
+--- a/overlay/frameworks/base/core/res/res/values/config.xml
++++ b/overlay/frameworks/base/core/res/res/values/config.xml
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <!--
+ /*
+-** Copyright 2012, The Android Open Source Project
++** Copyright 2015, The Android Open Source Project
+ **
+ ** Licensed under the Apache License, Version 2.0 (the "License");
+ ** you may not use this file except in compliance with the License.
+@@ -18,9 +18,55 @@
+ -->
+ 
+ <!-- These resources are around just to allow their values to be customized
+-     for different hardware and product builds. -->
+-<resources>
+-    <!-- Whether a software navigation bar should be shown. NOTE: in the future this may be
+-         autodetected from the Configuration. -->
++     for different hardware and product builds.  Do not translate. -->
++<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
++    <!-- Enable multi-user. -->
++    <bool name="config_enableMultiUserUI">true</bool>
++    <!-- Arbitrary max 8 users. -->
++    <integer name="config_multiuserMaximumUsers">8</integer>
++    <!-- Car Mode -->
++    <integer name="config_defaultUiModeType">3</integer>
++    <!-- Can't leave car mode -->
++    <bool name="config_lockUiMode">true</bool>
++    <!--  Control whether to launch Car dock home app when user presses home button or when
++          car dock intent is fired.
++          In mobile device, usually separate home app is expected in car mode, and this should be
++          enabled. But in environments like real car, default home app may be enough, and in that
++          case, this can be disabled (set to false). -->
++    <bool name="config_enableCarDockHomeLaunch">false</bool>
++    <!--  Control whether to lock day/night mode change from normal application. When it is
++          true, day / night mode change is only allowed to apps with MODIFY_DAY_NIGHT_MODE
++          permission. -->
++    <bool name="config_lockDayNightMode">true</bool>
++    <!-- Allow smart unlock immediately after boot because the user shouldn't have to enter a pin
++         code to unlock their car head unit. -->
++    <bool name="config_strongAuthRequiredOnBoot">false</bool>
++    <!-- Show Navigation Bar -->
+     <bool name="config_showNavigationBar">true</bool>
++
++    <integer name="config_jobSchedulerInactivityIdleThreshold">0</integer>
++    <integer name="config_jobSchedulerIdleWindowSlop">0</integer>
++
++    <bool name="config_supportsMultiWindow">false</bool>
++
++    <!-- Automotive Bluetooth pairing option -->
++    <bool name="enable_pbap_pce_profile">true</bool>
++
++    <!-- Component name of a custom ResolverActivity (Intent resolver) to be used instead of
++         the default framework version. -->
++    <string name="config_customResolverActivity" translatable="false">com.android.support.car.lenspicker/.LensResolverActivity</string>
++
++    <!-- Flag indicating that the entire notification header can be clicked to expand the
++         notification. If false, then the expand icon has to be clicked in order for the expand
++         to occur. -->
++    <bool name="config_notificationHeaderClickableForExpand">true</bool>
++
++    <!-- Night mode should be enabled. -->
++    <bool name="config_enableNightMode">true</bool>
++
++    <!-- The action buttons should always take the default color. -->
++    <bool name="config_tintNotificationActionButtons">false</bool>
++
++    <!-- Home screen(Launcher) app presence -->
++    <bool name="config_noHomeScreen">false</bool>
+ </resources>
+diff --git a/overlay/frameworks/base/packages/SettingsProvider/res/values/defaults.xml b/overlay/frameworks/base/packages/SettingsProvider/res/values/defaults.xml
+index 583a4e8..68dd88e 100644
+--- a/overlay/frameworks/base/packages/SettingsProvider/res/values/defaults.xml
++++ b/overlay/frameworks/base/packages/SettingsProvider/res/values/defaults.xml
+@@ -22,4 +22,7 @@
+ 
+     <!-- Development settings -->
+     <bool name="def_stay_on_while_plugged_in">true</bool>
++
++    <!-- Disable bluetooth by default -->
++    <bool name="def_bluetooth_on">false</bool>
+ </resources>
+diff --git a/overlay/frameworks/base/packages/SystemUI/res/values/config.xml b/overlay/frameworks/base/packages/SystemUI/res/values/config.xml
+new file mode 100644
+index 0000000..a0986f1
+--- /dev/null
++++ b/overlay/frameworks/base/packages/SystemUI/res/values/config.xml
+@@ -0,0 +1,29 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++/*
++** Copyright 2009, The Android Open Source Project
++**
++** Licensed under the Apache License, Version 2.0 (the "License");
++** you may not use this file except in compliance with the License.
++** You may obtain a copy of the License at
++**
++**     http://www.apache.org/licenses/LICENSE-2.0
++**
++** Unless required by applicable law or agreed to in writing, software
++** distributed under the License is distributed on an "AS IS" BASIS,
++** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++** See the License for the specific language governing permissions and
++** limitations under the License.
++*/
++-->
++
++<!-- These resources are around just to allow their values to be customized
++     for different hardware and product builds. -->
++<resources>
++    <!-- Component to be used as the status bar service.  Must implement the IStatusBar
++     interface.  This name is in the ComponentName flattened format (package/class)  -->
++    <string name="config_statusBarComponent" translatable="false">com.android.systemui.statusbar.car.CarStatusBar</string>
++
++    <!-- SystemUIFactory component -->
++    <string name="config_systemUIFactoryComponent" translatable="false">com.android.systemui.car.CarSystemUIFactory</string>
++</resources>
+diff --git a/rpi3.mk b/rpi3.mk
+index 511397b..791a20d 100644
+--- a/rpi3.mk
++++ b/rpi3.mk
+@@ -15,6 +15,7 @@ $(call inherit-product, build/target/product/go_defaults_512.mk)
+ 
+ $(call inherit-product, device/brobwind/rpi3/mini_common.mk)
+ $(call inherit-product, device/brobwind/rpi3/mini_rpi3_common.mk)
++$(call inherit-product, device/brobwind/rpi3/car.mk)
+ 
+ PRODUCT_NAME := rpi3
+ PRODUCT_DEVICE := rpi3
+@@ -30,8 +31,19 @@ PRODUCT_CHARACTERISTICS := nosdcard
+ PRODUCT_SHIPPING_API_LEVEL := 28
+ 
+ # It takes too much GPU memory
++#PRODUCT_COPY_FILES += \
++#    device/brobwind/rpi3/bootanimation.zip:system/media/bootanimation.zip
++
++# Device running Android is a car
++PRODUCT_COPY_FILES += \
++    frameworks/native/data/etc/android.hardware.type.automotive.xml:system/etc/permissions/android.hardware.type.automotive.xml
++
++# Default permission grant exceptions
+ PRODUCT_COPY_FILES += \
+-    device/brobwind/rpi3/bootanimation.zip:system/media/bootanimation.zip
++    packages/services/Car/car_product/build/default-car-permissions.xml:system/etc/default-permissions/default-car-permissions.xml
++
++PRODUCT_PACKAGES += \
++    android.hardware.automotive.vehicle@2.0-service
+ 
+ # TODO(b/78308559): includes vr_hwc into GSI before vr_hwc move to vendor
+ PRODUCT_PACKAGES += \
+@@ -40,7 +52,32 @@ PRODUCT_PACKAGES += \
+ PRODUCT_PACKAGES += \
+     Chrome \
+     RPiTool \
+-	TerminalEmulator
++	TerminalEmulator \
++	EZFileExplorer \
++	MXPlayer
++
++#OMX VIDEO SUPPORT
++PRODUCT_PACKAGES += \
++    libmedia \
++    libmediaplayerservice \
++    libstagefright \
++    libmediacodecservice \
++    mediacodec \
++    libstagefright_amrnb_common \
++    libstagefright_avc_common \
++    libstagefright_enc_common \
++    libstagefright_foundation \
++    libstagefright_omx \
++    libstagefright_yuv \
++    libvorbisidec \
++    media \
++    media_cmd \
++    mediadrmserver \
++    mediaserver \
++    mediametrics \
++    mediaextractor \
++
++
+ 
+ PRODUCT_PROPERTY_OVERRIDES += \
+     dalvik.vm.isa.arm.variant=cortex-a53 \
+-- 
+2.7.4
+

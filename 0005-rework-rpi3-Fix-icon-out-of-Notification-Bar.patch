@@ -1,0 +1,24 @@
+From 5252d7ad4105a02f69eb11355c9ae2fd065a6776 Mon Sep 17 00:00:00 2001
+From: Kha Tran <khab1304690@gmail.com>
+Date: Fri, 13 Sep 2019 17:31:34 +0000
+Subject: [PATCH 5/6] rework "rpi3: Fix icon out of Notification Bar"
+
+Signed-off-by: Kha Tran <khab1304690@gmail.com>
+---
+ overlay/frameworks/base/packages/SystemUI/res/values-land/dimens.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/overlay/frameworks/base/packages/SystemUI/res/values-land/dimens.xml b/overlay/frameworks/base/packages/SystemUI/res/values-land/dimens.xml
+index e6ef077..a1bf528 100644
+--- a/overlay/frameworks/base/packages/SystemUI/res/values-land/dimens.xml
++++ b/overlay/frameworks/base/packages/SystemUI/res/values-land/dimens.xml
+@@ -17,5 +17,5 @@
+ -->
+ <resources>
+     <!-- Width for the spacer, used between QS tiles. -->
+-    <dimen name="qs_quick_tile_space_width">38dp</dimen>
++    <dimen name="qs_quick_tile_space_width">0dp</dimen>
+ </resources>
+-- 
+2.7.4
+

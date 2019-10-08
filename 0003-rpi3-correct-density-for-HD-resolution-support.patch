@@ -1,0 +1,24 @@
+From b6b14767e6a565b23e19c261f9afbcbe1a1e503c Mon Sep 17 00:00:00 2001
+From: Kha Tran <khab1304690@gmail.com>
+Date: Fri, 13 Sep 2019 22:38:20 +0700
+Subject: [PATCH 3/6] rpi3: correct density for HD resolution support
+
+Signed-off-by: Kha Tran <khab1304690@gmail.com>
+---
+ rpi3.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/rpi3.mk b/rpi3.mk
+index 0338131..8ce6494 100644
+--- a/rpi3.mk
++++ b/rpi3.mk
+@@ -45,5 +45,5 @@ PRODUCT_PROPERTY_OVERRIDES += \
+     dalvik.vm.isa.arm.variant=cortex-a53 \
+     debug.hwui.use_partial_updates=0 \
+     ro.frp.pst=/dev/block/platform/soc/3f202000.mmc/by-name/frp \
+-    ro.sf.lcd_density=240 \
++    ro.sf.lcd_density=150 \
+     ro.opengles.version=131072 \
+-- 
+2.7.4
+
